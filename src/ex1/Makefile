@@ -12,4 +12,4 @@ cpu_stress: cpu_stress.o
 cpu_stress.o: cpu_stress.c
 
 clean:
-	$(RM) $(BINS) *.o $(SUBMIT_FILENAME)
+	$(RM) $(BINS) *.o
