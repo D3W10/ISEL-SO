@@ -1,0 +1,15 @@
+A execução deste código irá originar além do processo
+principal mais 6 processos.
+R: falsa
+
+A execução deste código irá originar além do processo
+principal mais 4 processos.
+R: falsa
+
+Este código pode originar processos órfãos, mas não processos
+zombies (defuncts).
+R: verdadeira
+
+Este código pode originar processos órfãos e processos
+zombies (defuncts).
+R: falsa
