@@ -1,15 +1,15 @@
 Este programa executa o programa date, para imprimir a data
 e hora no standard de output, em intervalos de 1 segundo
 durante 10 segundos.
-R:
+R: Falso
 
 São criados 10 processos auxiliares para executarem o
 programa date ficando esses processos no estado zombie.
-R:
+R: Falso
 
 Este código apenas executa o programa date 1 única vez.
-R:
+R: Verdadeiro
 
 Este código deveria esperar pelos processos filho através da
 utilização da chamada de sistema waitpid().
-R:
+R: Verdadeiro *
