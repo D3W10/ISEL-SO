@@ -18,16 +18,15 @@ int main(int argc, char *argv[]) {
 
     int pNum = atoi(argv[1]);
 
-    for (int i = 0; i < pNum; i++)
-    {
-        pid_t pId = fork();
+    for (int i = 0; i < pNum; i++) {
+        pid_t pId = fork(); // Create child process
         printf("forked %d\n", pId);
 
-        if (pId < 0) {
+        if (pId < 0) { // Error creating child process
             perror("fork");
             return -1;
         }
-        else if (pId == 0) {
+        else if (pId == 0) { // Code to be executed by the child process
             process_work(1e9);
             return 0;
         }

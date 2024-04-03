@@ -3,18 +3,14 @@ CC = gcc
 CFLAGS += -Wall
 CFLAGS += -g
 
-BINS = prog
+BINS = count_words.out
 
 all: $(BINS)
 
-prog: prog.out
-	./prog.out
-
-prog.out: prog.o
+count_words.out: count_words.o
 	$(CC) $(CFLAGS) $^ -o $@
 
-prog.o: prog.c
-	$(CC) $(CFLAGS) -c $< -o $@
+count_words.o: count_words.c
 
 clean:
 	$(RM) $(BINS) *.o *.out

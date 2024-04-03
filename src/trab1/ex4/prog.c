@@ -3,8 +3,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-int main(){
-    
+int main() {
     for (int i = 0; i < 10; ++i){
         execlp("date", "date", NULL);
         sleep(1);

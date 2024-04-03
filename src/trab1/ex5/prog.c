@@ -40,13 +40,13 @@ int vector_get_in_range(int v[], int v_sz, int sv[], int min, int max, int n_pro
             exit(1);
         }
 
-        retfork[i] = fork();
+        retfork[i] = fork(); // Create child process
 
-        if (retfork[i] < 0){
+        if (retfork[i] < 0) { // Error creating child process
             perror("fork");
             exit(1);
         }
-        else if(retfork[i] == 0){
+        else if(retfork[i] == 0) { // Code to be executed by the child process
             close(pipefd[i][0]);
 
             for (int j = i * subarray_size; j < (i + 1) * subarray_size; j++) {
@@ -62,7 +62,7 @@ int vector_get_in_range(int v[], int v_sz, int sv[], int min, int max, int n_pro
     }
 
     int num_elements = 0;
-    for (int i = 0; i < n_processes; i++) {
+    for (int i = 0; i < n_processes; i++) { // Read values from child processes
         int element;
         
         while (read(pipefd[i][0], &element, sizeof(int)) > 0) {
