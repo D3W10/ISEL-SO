@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <ctype.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -24,7 +25,7 @@ int main() {
                 putchar(toupper(buffer[i]));
         }
 
-        wait(pid);
+        wait(&pid);
     }
 
     return 0;
