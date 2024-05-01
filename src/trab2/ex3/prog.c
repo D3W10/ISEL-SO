@@ -15,9 +15,12 @@ typedef struct {
     int index;
     int min;
     int max;
-    int* res;
-    int* res_idx;
 } thread_args;
+
+typedef struct {
+    int* arr;
+    int size;
+} thread_res;
 
 /**
  * Generates a random number between min and max.
@@ -40,22 +43,30 @@ void vector_init_rand (int v[], long dim, int min, int max) {
  * Gets the subvector of values in the range [min..max]
 */
 void range_child(thread_args* args) {
-    for (int j = args->index * args->size; j < (args->index + 1) * args->size; j++) {
-        if (args->v[j] >= args->min && args->v[j] <= args->max)
-            args->res[*args->res_idx++] = args->v[j];
+    thread_res tres;
+    tres.arr = malloc(sizeof(int) * args->size);
+    tres.size = 0;
+
+    if (tres.arr == NULL)
+        fprintf(stderr, "Erro malloc\n");
+    else {
+        for (int j = args->index * args->size; j < (args->index + 1) * args->size; j++) {
+            if (args->v[j] >= args->min && args->v[j] <= args->max)
+                tres.arr[tres.size++] = args->v[j];
+        }
     }
 
-    pthread_exit(NULL);
+    pthread_exit(&tres);
 }
 
 /**
- * Gets the subvector of values in the range [min..max]
+ * Gets the subvector of values in the range [min..max] using threads
  * 
  * returns the number of values store in subvector sv 
  */
-int vector_get_in_range(int v[], int v_sz, int sv[], int min, int max, int n_threads) {
+int vector_get_in_range_with_threads (int v[], int v_sz, int sv[], int min, int max, int n_threads) {
     pthread_t th[MAX];
-    int res_idx = 0;
+    int num_elements = 0;
     int subarray_size = v_sz / n_threads;
 
     for (int i = 0; i < n_threads; i++) {
@@ -64,17 +75,24 @@ int vector_get_in_range(int v[], int v_sz, int sv[], int min, int max, int n_thr
         targs.size = subarray_size;
         targs.min = min;
         targs.max = max;
-        targs.res = sv;
-        targs.res_idx = &res_idx;
         targs.index = i;
 
         pthread_create(&th[i], NULL, (void *(*)(void *))range_child, (void *)&targs);
     }
 
-    for (int i = 0; i < n_threads; i++)
-        pthread_join(th[i], NULL);
+    for (int i = 0; i < n_threads; i++) {
+        void** result;
+        pthread_join(th[i], result);
 
-    return res_idx;
+        thread_res* subvector = (thread_res*)*result;
+        
+        for (int i = 0; i < subvector->size; i++)
+            sv[num_elements++] = subvector->arr[i];
+        
+        free(subvector->arr);
+    }
+
+    return num_elements;
 }
 
 int main(int argc, char *argv[]){
@@ -114,7 +132,7 @@ int main(int argc, char *argv[]){
     int values_min = 50;
     int values_max = 100;
 
-    count = vector_get_in_range(values, values_sz, subvalues, values_min, values_max, n_threads);
+    count = vector_get_in_range_with_threads(values, values_sz, subvalues, values_min, values_max, n_threads);
 
     // end of code to evaluate
 
