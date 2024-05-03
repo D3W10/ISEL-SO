@@ -43,20 +43,20 @@ void vector_init_rand (int v[], long dim, int min, int max) {
  * Gets the subvector of values in the range [min..max]
 */
 void range_child(thread_args* args) {
-    thread_res tres;
-    tres.arr = malloc(sizeof(int) * args->size);
-    tres.size = 0;
+    thread_res* tres = malloc(sizeof(thread_res));
+    tres->arr = malloc(sizeof(int) * args->size);
+    tres->size = 0;
 
-    if (tres.arr == NULL)
+    if (tres->arr == NULL)
         fprintf(stderr, "Erro malloc\n");
     else {
         for (int j = args->index * args->size; j < (args->index + 1) * args->size; j++) {
             if (args->v[j] >= args->min && args->v[j] <= args->max)
-                tres.arr[tres.size++] = args->v[j];
+                tres->arr[tres->size++] = args->v[j];
         }
     }
 
-    pthread_exit(&tres);
+    pthread_exit(tres);
 }
 
 /**
@@ -77,19 +77,25 @@ int vector_get_in_range_with_threads (int v[], int v_sz, int sv[], int min, int 
         targs.max = max;
         targs.index = i;
 
-        pthread_create(&th[i], NULL, (void *(*)(void *))range_child, (void *)&targs);
+        if (pthread_create(&th[i], NULL, (void *(*)(void *))range_child, (void *)&targs) != 0) {
+            fprintf(stderr, "Error creating thread\n");
+            return 1;
+        }
     }
 
     for (int i = 0; i < n_threads; i++) {
-        void** result;
-        pthread_join(th[i], result);
+        thread_res* subvector;
 
-        thread_res* subvector = (thread_res*)*result;
+        if (pthread_join(th[i], (void**)&subvector) != 0) {
+            fprintf(stderr, "Error joining thread\n");
+            return 1;
+        }
         
         for (int i = 0; i < subvector->size; i++)
             sv[num_elements++] = subvector->arr[i];
         
         free(subvector->arr);
+        free(subvector);
     }
 
     return num_elements;
