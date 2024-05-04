@@ -1,7 +1,7 @@
 Gerando um vetor de 3600000 valores utilizando:
 
 Método Sequencial:
-Entre 1m5s286,234ms e 1m3s678,894ms
+Entre 0s25,626ms e 0s30,114ms
 
 5 Processos:
 Entre 15s694,797ms e 16s476,495ms
