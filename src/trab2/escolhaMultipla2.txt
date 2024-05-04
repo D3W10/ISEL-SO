@@ -1,0 +1,15 @@
+Os sockets do domínio UNIX e os fifos são identificados através de um ficheiro especial no sistema
+de ficheiros.
+R: Verdadeiro
+
+O mecanismo de comunicação fifo (named pipe) apenas funciona entre processos com grau de
+parentesco.
+R: Falso
+
+Nos sockets stream a função bind serve para associar o socket a uma tarefa.
+R: Falso
+
+Os sockets são representados ao nível do núcleo do sistema operativo como um tipo de ficheiro
+e podem ser usados para o redireccionamento de I/O e a receção e envio de dados realizados
+através das funções de read() e write().
+R: Verdadeiro
