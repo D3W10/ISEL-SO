@@ -44,7 +44,7 @@ void range_child(thread_args* args) {
             args->res[args->res_count++] = args->v[j];
     }
 
-    //pthread_exit(NULL);
+    pthread_exit(NULL);
 }
 
 /**
