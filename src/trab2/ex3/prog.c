@@ -7,7 +7,6 @@
 
 #define LOWER_LIMIT       0
 #define UPPER_LIMIT     100
-#define MAX              50
 
 typedef struct {
     int* v;
@@ -15,12 +14,9 @@ typedef struct {
     int index;
     int min;
     int max;
+    int* res;
+    int res_count;
 } thread_args;
-
-typedef struct {
-    int* arr;
-    int size;
-} thread_res;
 
 /**
  * Generates a random number between min and max.
@@ -43,20 +39,12 @@ void vector_init_rand (int v[], long dim, int min, int max) {
  * Gets the subvector of values in the range [min..max]
 */
 void range_child(thread_args* args) {
-    thread_res* tres = malloc(sizeof(thread_res));
-    tres->arr = malloc(sizeof(int) * args->size);
-    tres->size = 0;
-
-    if (tres->arr == NULL)
-        fprintf(stderr, "Erro malloc\n");
-    else {
-        for (int j = args->index * args->size; j < (args->index + 1) * args->size; j++) {
-            if (args->v[j] >= args->min && args->v[j] <= args->max)
-                tres->arr[tres->size++] = args->v[j];
-        }
+    for (int j = args->index * args->size; j < (args->index + 1) * args->size; j++) {
+        if (args->v[j] >= args->min && args->v[j] <= args->max)
+            args->res[args->res_count++] = args->v[j];
     }
 
-    pthread_exit(tres);
+    //pthread_exit(NULL);
 }
 
 /**
@@ -65,37 +53,38 @@ void range_child(thread_args* args) {
  * returns the number of values store in subvector sv 
  */
 int vector_get_in_range_with_threads (int v[], int v_sz, int sv[], int min, int max, int n_threads) {
-    pthread_t th[MAX];
+    pthread_t th[n_threads];
+    thread_args targs[n_threads];
     int num_elements = 0;
     int subarray_size = v_sz / n_threads;
 
     for (int i = 0; i < n_threads; i++) {
-        thread_args targs;
-        targs.v = v;
-        targs.size = subarray_size;
-        targs.min = min;
-        targs.max = max;
-        targs.index = i;
+        targs[i].v = v;
+        targs[i].size = subarray_size;
+        targs[i].min = min;
+        targs[i].max = max;
+        targs[i].index = i;
+        targs[i].res = malloc(sizeof(int) * subarray_size);
+        targs[i].res_count = 0;
 
-        if (pthread_create(&th[i], NULL, (void *(*)(void *))range_child, (void *)&targs) != 0) {
+        if (targs[i].res == NULL)
+            fprintf(stderr, "Erro malloc\n");
+        else if (pthread_create(&th[i], NULL, (void *(*)(void *))range_child, (void *)&targs[i]) != 0) {
             fprintf(stderr, "Error creating thread\n");
             return 1;
         }
     }
 
     for (int i = 0; i < n_threads; i++) {
-        thread_res* subvector;
-
-        if (pthread_join(th[i], (void**)&subvector) != 0) {
+        if (pthread_join(th[i], NULL) != 0) {
             fprintf(stderr, "Error joining thread\n");
             return 1;
         }
         
-        for (int i = 0; i < subvector->size; i++)
-            sv[num_elements++] = subvector->arr[i];
-        
-        free(subvector->arr);
-        free(subvector);
+        for (int j = 0; j < targs[i].res_count; j++)
+            sv[num_elements++] = targs[i].res[j];
+
+        free(targs[i].res);
     }
 
     return num_elements;
