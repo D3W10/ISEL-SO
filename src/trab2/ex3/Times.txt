@@ -7,4 +7,4 @@ Entre 0s25,626ms e 0s30,114ms
 Entre 15s694,797ms e 16s476,495ms
 
 5 Tarefas
-Entre 0s583,698ms e 0s614,351ms
+Entre 0s245,469ms e 0s265,7ms
