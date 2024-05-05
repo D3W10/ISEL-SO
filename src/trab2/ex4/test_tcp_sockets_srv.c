@@ -22,10 +22,10 @@ void handle_client(int* socketfd) {
     }
 
     read(*socketfd, buf, sizeof(buf));
-    int min = buf[0], max = buf[1];
+    int cnt = buf[0], min = buf[1], max = buf[2], globalCount = 0, stopLoop = 0;
 
     while ((nbytesRD = read(*socketfd, buf, sizeof(buf))) > 0) {
-        for (int i = 0; i < sizeof(buf) / sizeof(int); i++) {
+        for (int i = 0; i < sizeof(buf) / sizeof(int) && !stopLoop; i++) {
             if (buf[i] >= min && buf[i] <= max) {
                 if (vecSize + 1 > vecCapacity) {
                     vecCapacity += MAX_BUF * 2;
@@ -39,7 +39,12 @@ void handle_client(int* socketfd) {
 
                 vec[vecSize++] = buf[i];
             }
+
+            if (++globalCount >= cnt)
+                stopLoop = 1;
         }
+        if (stopLoop)
+            break;
     }
 
     handle_error_system(write(*socketfd, vec, sizeof(int) * vecCapacity), "Writing to client");

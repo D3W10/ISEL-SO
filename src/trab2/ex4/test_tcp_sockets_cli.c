@@ -12,6 +12,8 @@
 #define MAX_BUF                      64
 #define LOWER_LIMIT                   0
 #define UPPER_LIMIT                 100
+#define MIN                          50
+#define MAX                         100
 
 void cpy_buffer(int dest[], int buf[], int buf_size, long* size) {
     for (int i = 0; i < buf_size; i++)
@@ -56,11 +58,11 @@ int main(int argc, char * argv[])
         return -1;
     }
 
-    int info[2] = { LOWER_LIMIT, UPPER_LIMIT };
+    int info[3] = { values_sz, MIN, MAX };
     long subvalues_size = 0;
 
     // initiate initial array of values 
-    vector_init_rand(values, values_sz, info[0], info[1]);
+    vector_init_rand(values, values_sz, info[1], info[2]);
 
     handle_error_system(writen(socketfd, info, sizeof(info)), "Writing to server");
     handle_error_system(writen(socketfd, values, values_sz * sizeof(int)), "Writing to server");
