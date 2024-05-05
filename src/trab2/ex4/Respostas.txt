@@ -1,0 +1,7 @@
+A transferência do vetor entre os clientes e o servidor é independente da arquitetura das máquinas?
+--
+A transferência do vetor entre os clientes e o servidor é independente da arquitetura das máquinas, desde que ambos usem o mesmo formato de representação de dados. É recomendado usar um formato de representação de dados padrão para garantir a boa troca de informações entre diferentes arquiteturas.
+
+O suporte da comunicação implementada tem em consideração a característica dos sockets streams não preservarem a fronteira das mensagens?
+--
+Os sockets streams não preservam a fronteira das mensagens, o que significa que as mensagens enviadas podem ser divididas durante a transmissão. É necessário implementar um protocolo de comunicação que permita identificar o início e o fim de cada mensagem. Normalmente envia-se o tamanho da mensagem antes dos dados, como foi feito neste exercício.
