@@ -10,6 +10,13 @@
 #define MAX_BUF                 64
 
 void handle_client(int* socketfd) {
+    process_client(socketfd);
+
+    handle_error_system(close(*socketfd), "[srv] closing socket to client");
+    free(socketfd);
+}
+
+void process_client(int* socketfd) {
     int buf[MAX_BUF];
     int nbytesRD;
     int vecCapacity = MAX_BUF * 2;
@@ -51,7 +58,6 @@ void handle_client(int* socketfd) {
     free(vec);
 
     handle_error_system(nbytesRD, "[srv] reading from client");
-    handle_error_system(close(*socketfd), "[srv] closing socket to client");
 }
 
 int main(int argc, char* argv[]) {
@@ -83,6 +89,9 @@ int main(int argc, char* argv[]) {
 
         handle_error_system(newsocketfd, "[srv] Accept new connection");
 
+        int* socket_fd_cpy = malloc(sizeof(int));
+        *socket_fd_cpy = newsocketfd;
+
         if (!useThreads) {
             pid_t pid = fork();
 
@@ -91,13 +100,15 @@ int main(int argc, char* argv[]) {
                 fprintf(stderr, "Error creating process\n");
                 exit(EXIT_FAILURE);
             }
-            else if (pid == 0)
-                handle_client(&newsocketfd);
+            else if (pid == 0) {
+                handle_client(socket_fd_cpy);
+                exit(EXIT_SUCCESS);
+            }
         }
         else {
             pthread_t pth;
 
-            if (pthread_create(&pth, NULL, (void *(*)(void *))handle_client, (void *)&newsocketfd) != 0) {
+            if (pthread_create(&pth, NULL, (void *(*)(void *))handle_client, (void *)socket_fd_cpy) != 0) {
                 handle_error_system(close(newsocketfd), "[srv] closing socket to client");
                 fprintf(stderr, "Error creating thread\n");
                 exit(EXIT_FAILURE);
