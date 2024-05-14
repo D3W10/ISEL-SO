@@ -2,7 +2,6 @@
 #include "errors.h"
 #include "vector_utils.h"
 
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -16,8 +15,10 @@
 #define MAX                         100
 
 void cpy_buffer(int dest[], int buf[], int buf_size, long* size) {
-    for (int i = 0; i < buf_size; i++)
-        dest[*size++] = buf[i];
+    for (int i = 0; i < buf_size; i++) {
+        dest[*size] = buf[i];
+        *size += 1;
+    }
 }
 
 int main(int argc, char * argv[])
@@ -62,7 +63,7 @@ int main(int argc, char * argv[])
     long subvalues_size = 0;
 
     // initiate initial array of values 
-    vector_init_rand(values, values_sz, info[1], info[2]);
+    vector_init_rand(values, values_sz, LOWER_LIMIT, UPPER_LIMIT);
 
     handle_error_system(writen(socketfd, info, sizeof(info)), "Writing to server");
     handle_error_system(writen(socketfd, values, values_sz * sizeof(int)), "Writing to server");
@@ -80,6 +81,8 @@ int main(int argc, char * argv[])
     printf("Values between [%d..%d]: %ld\n", info[0], info[1], subvalues_size);
 
     handle_error_system(close(socketfd), "[cli] closing socket to server");
+
+    free(subvalues);
 
     return 0;
 }

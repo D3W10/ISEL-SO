@@ -9,6 +9,8 @@
 #define DEFAUT_SERVER_PORT    5000
 #define MAX_BUF                 64
 
+void process_client(int* socketfd);
+
 void handle_client(int* socketfd) {
     process_client(socketfd);
 
@@ -37,7 +39,7 @@ void process_client(int* socketfd) {
                 if (vecSize + 1 > vecCapacity) {
                     vecCapacity += MAX_BUF * 2;
 
-                    if (realloc(vec, sizeof(int) * vecCapacity) == NULL) {
+                    if ((vec = realloc(vec, sizeof(int) * vecCapacity)) == NULL) {
                         handle_error_system(close(*socketfd), "[srv] closing socket to client");
                         fprintf(stderr, "Erro malloc\n");
                         exit(EXIT_FAILURE);
@@ -54,7 +56,7 @@ void process_client(int* socketfd) {
             break;
     }
 
-    handle_error_system(write(*socketfd, vec, sizeof(int) * vecCapacity), "Writing to client");
+    handle_error_system(writen(*socketfd, vec, sizeof(int) * vecCapacity), "Writing to client");
     free(vec);
 
     handle_error_system(nbytesRD, "[srv] reading from client");
