@@ -72,7 +72,6 @@ int main(int argc, char * argv[])
 
     while (readn(socketfd, buf, sizeof(buf)) <= 0);
     cpy_buffer(subvalues, buf, sizeof(buf) / sizeof(int), &subvalues_size);
-    // TODO CHECK THIS OUT MATE
 
     while (readn(socketfd, buf, sizeof(buf)) > 0)
         cpy_buffer(subvalues, buf, sizeof(buf) / sizeof(int), &subvalues_size);
