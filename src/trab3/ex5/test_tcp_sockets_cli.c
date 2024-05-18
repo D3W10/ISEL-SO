@@ -14,7 +14,7 @@
 #define MIN                          50
 #define MAX                         100
 
-void cpy_buffer(int dest[], int buf[], int buf_size, long* size) {
+void cpy_buffer(int dest[], const int buf[], int buf_size, int* size) {
     for (int i = 0; i < buf_size; i++) {
         dest[*size] = buf[i];
         *size += 1;
@@ -31,7 +31,7 @@ int main(int argc, char * argv[])
         return -1;
     }
 
-    long values_sz = atoi(argv[1]);
+    int values_sz = atoi(argv[1]);
 
     if (argc == 4) {
         serverEndpoint = argv[2];
@@ -43,7 +43,7 @@ int main(int argc, char * argv[])
     int socketfd = tcp_socket_client_init(serverEndpoint, serverPort);
     handle_error_system(socketfd, "[cli] Server socket init");
 
-    printf("Initializing a vector of %ld bytes\n", values_sz);
+    printf("Initializing a vector of %d bytes\n", values_sz);
 
     // allocate a vector of initial values
     int *values = malloc(sizeof(int) * values_sz);
@@ -59,8 +59,8 @@ int main(int argc, char * argv[])
         return -1;
     }
 
-    int info[3] = { values_sz, MIN, MAX };
-    long subvalues_size = 0;
+    int info[] = { values_sz, MIN, MAX };
+    int subvalues_size = 0;
 
     // initiate initial array of values 
     vector_init_rand(values, values_sz, LOWER_LIMIT, UPPER_LIMIT);
@@ -68,20 +68,20 @@ int main(int argc, char * argv[])
     handle_error_system(writen(socketfd, info, sizeof(info)), "Writing to server");
     handle_error_system(writen(socketfd, values, values_sz * sizeof(int)), "Writing to server");
 
-    free(values);
-
     int buf[MAX_BUF];
 
     while (readn(socketfd, buf, sizeof(buf)) <= 0);
     cpy_buffer(subvalues, buf, sizeof(buf) / sizeof(int), &subvalues_size);
+    // TODO CHECK THIS OUT MATE
 
     while (readn(socketfd, buf, sizeof(buf)) > 0)
         cpy_buffer(subvalues, buf, sizeof(buf) / sizeof(int), &subvalues_size);
 
-    printf("Values between [%d..%d]: %ld\n", info[0], info[1], subvalues_size);
+    printf("Values between [%d..%d]: %d\n", info[0], info[1], subvalues_size);
 
     handle_error_system(close(socketfd), "[cli] closing socket to server");
 
+    free(values);
     free(subvalues);
 
     return 0;

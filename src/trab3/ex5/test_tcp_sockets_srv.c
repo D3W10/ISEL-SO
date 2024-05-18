@@ -9,7 +9,7 @@
 #define DEFAUT_SERVER_PORT    5000
 #define MAX_BUF                 64
 
-void process_client(int* socketfd);
+void process_client(const int* socketfd);
 
 void handle_client(int* socketfd) {
     process_client(socketfd);
@@ -18,7 +18,7 @@ void handle_client(int* socketfd) {
     free(socketfd);
 }
 
-void process_client(int* socketfd) {
+void process_client(const int* socketfd) {
     int buf[MAX_BUF];
     int nbytesRD;
     int vecCapacity = MAX_BUF * 2;
@@ -30,11 +30,20 @@ void process_client(int* socketfd) {
         exit(EXIT_FAILURE);
     }
 
-    read(*socketfd, buf, sizeof(buf));
-    int cnt = buf[0], min = buf[1], max = buf[2], globalCount = 0, stopLoop = 0;
+    int cnt, min, max, hasData = 0, globalCount = 0, stopLoop = 0;
 
     while ((nbytesRD = read(*socketfd, buf, sizeof(buf))) > 0) {
-        for (int i = 0; i < sizeof(buf) / sizeof(int) && !stopLoop; i++) {
+        int start = 0;
+
+        if (!hasData) {
+            cnt = buf[0];
+            min = buf[1];
+            max = buf[2];
+            hasData = 1;
+            start = 3;
+        }
+
+        for (int i = start; i < sizeof(buf) / sizeof(int) && !stopLoop; i++) {
             if (buf[i] >= min && buf[i] <= max) {
                 if (vecSize + 1 > vecCapacity) {
                     vecCapacity += MAX_BUF * 2;
@@ -109,14 +118,16 @@ int main(int argc, char* argv[]) {
         }
         else {
             pthread_t pth;
+            pthread_attr_t attr;
 
-            if (pthread_create(&pth, NULL, (void *(*)(void *))handle_client, (void *)socket_fd_cpy) != 0) {
+            pthread_attr_init(&attr);
+            pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+            if (pthread_create(&pth, &attr, (void *(*)(void *))handle_client, (void *)socket_fd_cpy) != 0) {
                 handle_error_system(close(newsocketfd), "[srv] closing socket to client");
                 fprintf(stderr, "Error creating thread\n");
                 exit(EXIT_FAILURE);
             }
         }
     }
-
-    return 0;
 }
