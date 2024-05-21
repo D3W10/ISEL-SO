@@ -32,27 +32,29 @@ void process_client(const int* socketfd) {
 
     int cnt, min, max, hasData = 0, globalCount = 0, stopLoop = 0;
 
-    while ((nbytesRD = read(*socketfd, buf, sizeof(buf))) > 0) {
-        int start = 0;
+    while ((nbytesRD = read(*socketfd, buf, sizeof(buf))) > 0 && !stopLoop) {
+        int start = hasData ? 0 : 3;
 
         if (!hasData) {
             cnt = buf[0];
             min = buf[1];
             max = buf[2];
             hasData = 1;
-            start = 3;
         }
 
         for (int i = start; i < sizeof(buf) / sizeof(int) && !stopLoop; i++) {
             if (buf[i] >= min && buf[i] <= max) {
                 if (vecSize + 1 > vecCapacity) {
+                    int* tmp;
                     vecCapacity += MAX_BUF * 2;
 
-                    if ((vec = realloc(vec, sizeof(int) * vecCapacity)) == NULL) {
+                    if ((tmp = realloc(vec, sizeof(int) * vecCapacity)) == NULL) {
                         handle_error_system(close(*socketfd), "[srv] closing socket to client");
                         fprintf(stderr, "Erro malloc\n");
                         exit(EXIT_FAILURE);
                     }
+                    else
+                        vec = tmp;
                 }
 
                 vec[vecSize++] = buf[i];
@@ -61,11 +63,9 @@ void process_client(const int* socketfd) {
             if (++globalCount >= cnt)
                 stopLoop = 1;
         }
-        if (stopLoop)
-            break;
     }
 
-    handle_error_system(writen(*socketfd, vec, sizeof(int) * vecCapacity), "Writing to client");
+    handle_error_system(writen(*socketfd, vec, sizeof(int) * vecSize), "Writing to client");
     free(vec);
 
     handle_error_system(nbytesRD, "[srv] reading from client");
@@ -88,7 +88,7 @@ int main(int argc, char* argv[]) {
         printf("Port should be above 1024\n");
         exit(EXIT_FAILURE);
     }
-           	
+
     printf("Server running on port %d\n", serverPort);
 
     int socketfd = tcp_socket_server_init(serverPort);
@@ -112,6 +112,7 @@ int main(int argc, char* argv[]) {
                 exit(EXIT_FAILURE);
             }
             else if (pid == 0) {
+                close(socketfd);
                 handle_client(socket_fd_cpy);
                 exit(EXIT_SUCCESS);
             }
