@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include <pthread.h>
 
+/**
+ * Este programa produz sempre o mesmo resultado pois cada thread calcula a sua soma separadamente e quando todas as threads terminarem, os resultados das somas são somados no count final.
+ */
+
 void *th1(void *arg) {
     int *pt = (int *)arg;
 

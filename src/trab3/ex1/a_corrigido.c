@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include <pthread.h>
 
+/**
+ * Este programa produz sempre o mesmo resultado pois o valor da variável count é controlado através do mutex, permitindo acesso único ao count.
+ */
+
 pthread_mutex_t mutex;
 
 void *th1(void *arg) {

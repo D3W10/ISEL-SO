@@ -1,6 +1,12 @@
 #include <stdio.h>
 #include <pthread.h>
 
+/**
+ * Este programa não produz sempre o mesmo resultado pois o valor da variável count é alterado pelas 3 threads ao mesmo tempo.
+ * O valor de count que uma thread lê pode ter sido alterado por outra thread antes de o novo valor ter sido escrito.
+ * @file a_corrigido.c
+ */
+
 void *th1(void *arg) {
     int *pt = (int *)arg;
 
