@@ -8,18 +8,11 @@
 
 #define DEFAULT_SERVER_HOST "localhost"
 #define DEFAUT_SERVER_PORT         5000
-#define MAX_BUF                      64
+#define MAX_BUF                      32
 #define LOWER_LIMIT                   0
 #define UPPER_LIMIT                 100
 #define MIN                          50
 #define MAX                         100
-
-void cpy_buffer(int dest[], const int buf[], int buf_size, int* size) {
-    for (int i = 0; i < buf_size; i++) {
-        dest[*size] = buf[i];
-        *size += 1;
-    }
-}
 
 int main(int argc, char * argv[])
 {
@@ -43,7 +36,7 @@ int main(int argc, char * argv[])
     int socketfd = tcp_socket_client_init(serverEndpoint, serverPort);
     handle_error_system(socketfd, "[cli] Server socket init");
 
-    printf("Initializing a vector of %d bytes\n", values_sz);
+    printf("Initializing a vector of %d values\n", values_sz);
 
     // allocate a vector of initial values
     int *values = malloc(sizeof(int) * values_sz);
@@ -68,13 +61,13 @@ int main(int argc, char * argv[])
     handle_error_system(writen(socketfd, info, sizeof(info)), "Writing to server");
     handle_error_system(writen(socketfd, values, values_sz * sizeof(int)), "Writing to server");
 
-    int buf[MAX_BUF];
+    int buf[MAX_BUF], finish = 0;
 
-    while (readn(socketfd, buf, sizeof(buf)) <= 0);
+    while (read(socketfd, buf, sizeof(buf)) <= 0);
     cpy_buffer(subvalues, buf, sizeof(buf) / sizeof(int), &subvalues_size);
 
-    while (readn(socketfd, buf, sizeof(buf)) > 0)
-        cpy_buffer(subvalues, buf, sizeof(buf) / sizeof(int), &subvalues_size);
+    while (!finish && read(socketfd, buf, sizeof(buf)) > 0)
+        finish = cpy_buffer(subvalues, buf, sizeof(buf) / sizeof(int), &subvalues_size);
 
     printf("Values between [%d..%d]: %d\n", info[0], info[1], subvalues_size);
 

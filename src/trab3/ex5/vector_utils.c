@@ -17,3 +17,15 @@ void vector_init_rand (int v[], long dim, int min, int max) {
     for (long i = 0; i < dim; i++)
         v[i] = get_random(min, max);
 }
+
+int cpy_buffer(int dest[], const int buf[], int buf_size, int* size) {
+    for (int i = 0; i < buf_size; i++) {
+        if (buf[i] == INT32_MIN)
+            return 1;
+
+        dest[*size] = buf[i];
+        *size += 1;
+    }
+
+    return 0;
+}

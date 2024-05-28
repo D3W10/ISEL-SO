@@ -30,19 +30,15 @@ void process_client(const int* socketfd) {
         exit(EXIT_FAILURE);
     }
 
-    int cnt, min, max, hasData = 0, globalCount = 0, stopLoop = 0;
+    int cnt, min, max, globalCount = 0, stopLoop = 0;
 
-    while ((nbytesRD = read(*socketfd, buf, sizeof(buf))) > 0 && !stopLoop) {
-        int start = hasData ? 0 : 3;
+    read(*socketfd, buf, 3 * sizeof(int));
+    cnt = buf[0];
+    min = buf[1];
+    max = buf[2];
 
-        if (!hasData) {
-            cnt = buf[0];
-            min = buf[1];
-            max = buf[2];
-            hasData = 1;
-        }
-
-        for (int i = start; i < sizeof(buf) / sizeof(int) && !stopLoop; i++) {
+    while (!stopLoop && (nbytesRD = read(*socketfd, buf, sizeof(buf))) > 0) {
+        for (int i = 0; !stopLoop && i < sizeof(buf) / sizeof(int); i++) {
             if (buf[i] >= min && buf[i] <= max) {
                 if (vecSize + 1 > vecCapacity) {
                     int* tmp;
@@ -65,7 +61,11 @@ void process_client(const int* socketfd) {
         }
     }
 
+    int end = INT32_MIN;
+
     handle_error_system(writen(*socketfd, vec, sizeof(int) * vecSize), "Writing to client");
+    handle_error_system(writen(*socketfd, &end, sizeof(int)), "Ending transmission");
+
     free(vec);
 
     handle_error_system(nbytesRD, "[srv] reading from client");
