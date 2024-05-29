@@ -1,15 +1,14 @@
 #include "sockets.h"
 
 #include <string.h>
-
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <sys/un.h>
 
-int tcp_socket_server_init(int serverPort)
-{
+int tcp_socket_server_init(int serverPort) {
     int sockfd;
     struct sockaddr_in serv_addr;
 
@@ -38,20 +37,18 @@ int tcp_socket_server_init(int serverPort)
     return sockfd;
 }
 
-int tcp_socket_server_accept(int serverSocket)
-{
+int tcp_socket_server_accept(int serverSocket) {
     struct sockaddr_in client_addr;
-
     socklen_t dim_client = sizeof(client_addr);
-    return accept(serverSocket, (struct sockaddr *)(&client_addr), &dim_client);
-    // if ( newSockfd < 0 ) {
-    //     return -1;
-    // }
-    // return newSockfd;
+
+    int newsockfd = accept(serverSocket, (struct sockaddr *)(&client_addr), &dim_client);
+    if (newsockfd < 0 )
+        return -1;
+
+    return newsockfd;
 }
 
-int tcp_socket_client_init(const char *host, int port)
-{
+int tcp_socket_client_init(const char *host, int port) {
     int sockfd;
     in_addr_t serverAddress;
     struct hostent *phe;
@@ -81,6 +78,54 @@ int tcp_socket_client_init(const char *host, int port)
         return -1;
     }
      
+    return sockfd;
+}
+
+int un_socket_server_init(const char *serverEndPoint) {
+    int sockfd;
+    struct sockaddr_un serv_addr;
+
+    if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
+        return -1;
+
+    memset((char*)&serv_addr, 0, sizeof(serv_addr));
+    serv_addr.sun_family = AF_UNIX;
+    strcpy(serv_addr.sun_path, serverEndPoint);
+
+    if (bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+        return -1;
+
+    if (listen(sockfd, 5) < 0)
+        return -1;
+
+    return sockfd;
+}
+
+int un_socket_server_accept(int serverSocket) {
+    struct sockaddr_un cli_addr;
+    socklen_t clilen = sizeof(cli_addr);
+
+    int newsockfd = accept(serverSocket, (struct sockaddr *)&cli_addr, &clilen);
+    if (newsockfd < 0)
+        return -1;
+
+    return newsockfd;
+}
+
+int un_socket_client_init(const char *serverEndPoint) {
+    int sockfd;
+    struct sockaddr_un serv_addr;
+
+    if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
+        return -1;
+
+    memset((char*)&serv_addr, 0, sizeof(serv_addr));
+    serv_addr.sun_family = AF_UNIX;
+    strcpy(serv_addr.sun_path, serverEndPoint);
+
+    if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+        return -1;
+
     return sockfd;
 }
 
