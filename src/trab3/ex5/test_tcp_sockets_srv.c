@@ -6,8 +6,9 @@
 #include "sockets.h"
 #include "errors.h"
 
-#define DEFAUT_SERVER_PORT 5000
-#define MAX_BUF              64
+#define DEFAUT_SERVER_PORT             5000
+#define MAX_BUF                          64
+#define UNIX_SOCKET_PATH "/tmp/unix_socket"
 
 typedef struct {
     int socketfd;
@@ -27,6 +28,8 @@ typedef struct {
 void process_client(int socketfd, int useThreads);
 int vector_get_in_range_with_processes(int v[], int v_sz, int sv[], int min, int max, int n_processes);
 int vector_get_in_range_with_threads(int v[], int v_sz, int sv[], int min, int max, int n_threads);
+void tcp_accept(int tcpSocketfd, int useThreads);
+void unix_accept(int unixSocketfd, int useThreads);
 
 void range_child(thread_args* args) {
     for (int j = args->index * args->size; j < (args->index + 1) * args->size; j++) {
@@ -109,7 +112,7 @@ int vector_get_in_range_with_processes(int v[], int v_sz, int sv[], int min, int
             perror("fork");
             exit(1);
         }
-        else if(retfork[i] == 0) { // Code to be executed by the child process
+        else if (retfork[i] == 0) { // Code to be executed by the child process
             close(pipefd[i][0]);
 
             for (int j = i * subarray_size; j < (i + 1) * subarray_size; j++) {
@@ -198,12 +201,54 @@ int main(int argc, char *argv[]) {
 
     printf("Server running on port %d\n", serverPort);
 
-    int socketfd = tcp_socket_server_init(serverPort);
+    int tcpSocketfd = tcp_socket_server_init(serverPort);
+    handle_error_system(tcpSocketfd, "[srv] TCP server socket init");
 
-    handle_error_system(socketfd, "[srv] Server socket init");
+    int unixSocketfd = un_socket_server_init(UNIX_SOCKET_PATH);
+    handle_error_system(unixSocketfd, "[srv] UNIX server socket init");
 
+    pid_t child = fork();
+    if (child < 0) {
+        perror("fork");
+        exit(1);
+    }
+    else if (child == 0) {
+        unix_accept(unixSocketfd, useThreads);
+        exit(0);
+    }
+
+    tcp_accept(tcpSocketfd, useThreads);
+
+    return 0;
+}
+
+void tcp_accept(int tcpSocketfd, int useThreads) {
     while (1) {
-        int newsocketfd = tcp_socket_server_accept(socketfd);
+        int newsocketfd = tcp_socket_server_accept(tcpSocketfd);
+
+        handle_error_system(newsocketfd, "[srv] Accept new connection");
+
+        client_args *p_args = malloc(sizeof(client_args));
+        p_args->socketfd = newsocketfd;
+        p_args->useThreads = useThreads;
+
+        pthread_t pth;
+        pthread_attr_t attr;
+
+        pthread_attr_init(&attr);
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+        if (pthread_create(&pth, &attr, handle_client, p_args) != 0) {
+            handle_error_system(close(newsocketfd), "[srv] closing socket to client");
+            fprintf(stderr, "Error creating thread\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+}
+
+void unix_accept(int unixSocketfd, int useThreads) {
+    while (1) {
+        int newsocketfd = un_socket_server_accept(unixSocketfd);
 
         handle_error_system(newsocketfd, "[srv] Accept new connection");
 

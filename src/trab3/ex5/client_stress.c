@@ -7,12 +7,13 @@
 #include "vector_utils.h"
 #include "errors.h"
 
-#define SIZE     100000
-#define MIN          15
-#define MAX          50
-#define LOWER_LIMIT   0
-#define UPPER_LIMIT 100
-#define MAX_BUF      64
+#define SIZE                         100000
+#define MIN                              15
+#define MAX                              50
+#define LOWER_LIMIT                       0
+#define UPPER_LIMIT                     100
+#define MAX_BUF                          64
+#define UNIX_SOCKET_PATH "/tmp/unix_socket"
 
 char* server_endpoint = "localhost";
 int server_port = 5000;
@@ -23,8 +24,8 @@ void *client_thread(void *arg) {
 
     if (strcmp(connection_type, "tcp") == 0)
         socketfd = tcp_socket_client_init(server_endpoint, server_port);
-    //else if (strcmp(connection_type, "unix") == 0)
-    //    socketfd = un_socket_client_init(UNIX_SOCKET_PATH);
+    else if (strcmp(connection_type, "unix") == 0)
+        socketfd = un_socket_client_init(UNIX_SOCKET_PATH);
     else
         pthread_exit(NULL);
 
