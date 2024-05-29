@@ -1,9 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
 #include <pthread.h>
 
 #define MAX 50
@@ -11,7 +8,12 @@
 void process_work(long niter) {
     for (long i = 0; i < niter; i++)
         sqrt(rand());
+}
 
+void* handle_work(void *arg) {
+    long* niter = (long*) arg;
+
+    process_work(*niter);
     pthread_exit(NULL);
 }
 
@@ -26,7 +28,11 @@ int main(int argc, char *argv[]) {
     pthread_t th[MAX];
 
     for (int i = 0; i < pNum; i++) {
-        pthread_create(&th[i], NULL, (void *(*)(void *))process_work, (void *)n);
+        if (pthread_create(&th[i], NULL, handle_work, &n) != 0) {
+            fprintf(stderr, "Error creating thread\n");
+            exit(EXIT_FAILURE);
+        }
+
         printf("Threaded %lu\n", th[i]);
     }
 

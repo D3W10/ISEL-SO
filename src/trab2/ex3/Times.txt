@@ -8,3 +8,7 @@ Entre 15s694,797ms e 16s476,495ms
 
 5 Tarefas
 Entre 0s245,469ms e 0s265,7ms
+
+Para gerar um vetor de 3600000 valores, o método sequencial é o que se mostra mais eficiente logo, neste caso, o paralelismo
+não beneficia o desempenho do programa. Os tempos quando se usam processos são significativamente maiores do que com tarefas
+já que a criação de processos requer mais recursos do que a criação de tarefas.

@@ -3,9 +3,14 @@ CC = gcc
 CFLAGS += -Wall
 CFLAGS += -g
 
-BINS = test_tcp_sockets_srv.out test_tcp_sockets_cli.out
+BINS = test_tcp_sockets_srv.out test_tcp_sockets_cli.out client_stress.out
 
 all: $(BINS)
+
+client_stress.out: client_stress.o sockets.o errors.o vector_utils.o
+	$(CC) $(CFLAGS) $^ -o $@ $(LOADLIBES)
+
+client_stress.o: client_stress.c sockets.h errors.h vector_utils.h
 
 test_tcp_sockets_srv.out: test_tcp_sockets_srv.o sockets.o errors.o vector_utils.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LOADLIBES)
