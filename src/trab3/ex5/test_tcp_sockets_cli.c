@@ -7,17 +7,17 @@
 #include <unistd.h>
 
 #define DEFAULT_SERVER_HOST "localhost"
-#define DEFAUT_SERVER_PORT         5000
-#define MAX_BUF                      32
-#define LOWER_LIMIT                   0
-#define UPPER_LIMIT                 100
-#define MIN                          50
-#define MAX                         100
+#define DEFAULT_SERVER_PORT       5000
+#define MAX_BUF                     32
+#define LOWER_LIMIT                  0
+#define UPPER_LIMIT                100
+#define MIN                         50
+#define MAX                        100
 
 int main(int argc, char * argv[])
 {
-    char *serverEndpoint  = DEFAULT_SERVER_HOST;
-    int   serverPort      = DEFAUT_SERVER_PORT;
+    char *serverEndpoint = DEFAULT_SERVER_HOST;
+    int serverPort = DEFAULT_SERVER_PORT;
 
     if (argc < 2) {
         printf("Usage: %s <vector_size> [<server_endpoint> <server_port>]\n", argv[0]);
@@ -28,7 +28,7 @@ int main(int argc, char * argv[])
 
     if (argc == 4) {
         serverEndpoint = argv[2];
-        serverPort     = atoi(argv[3]);
+        serverPort = atoi(argv[3]);
     }
 
     printf("client connecting to: %s:%d\n", serverEndpoint, serverPort);
@@ -61,15 +61,19 @@ int main(int argc, char * argv[])
     handle_error_system(writen(socketfd, info, sizeof(info)), "Writing to server");
     handle_error_system(writen(socketfd, values, values_sz * sizeof(int)), "Writing to server");
 
-    int buf[MAX_BUF], finish = 0;
+    int buf[MAX_BUF], cnt, nFullBatch, batchCount = 0, readBytes;
 
-    while (read(socketfd, buf, sizeof(buf)) <= 0);
-    cpy_buffer(subvalues, buf, sizeof(buf) / sizeof(int), &subvalues_size);
+    readn(socketfd, buf, sizeof(int));
+    cnt = buf[0];
+    nFullBatch = cnt / MAX_BUF;
 
-    while (!finish && read(socketfd, buf, sizeof(buf)) > 0)
-        finish = cpy_buffer(subvalues, buf, sizeof(buf) / sizeof(int), &subvalues_size);
+    while (cnt != subvalues_size && (readBytes = readn(socketfd, buf, (batchCount < nFullBatch ? MAX_BUF : cnt % MAX_BUF) * sizeof(int))) > 0) {
+        cpy_buffer(subvalues, buf, readBytes / sizeof(int), &subvalues_size);
 
-    printf("Values between [%d..%d]: %d\n", info[0], info[1], subvalues_size);
+        batchCount++;
+    }
+
+    printf("Values between [%d..%d]: %d\n", info[1], info[2], subvalues_size);
 
     handle_error_system(close(socketfd), "[cli] closing socket to server");
 
