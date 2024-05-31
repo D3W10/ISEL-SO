@@ -1,7 +1,6 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 typedef struct {
     int count;
@@ -9,14 +8,13 @@ typedef struct {
     pthread_mutex_t mutex;
 } countdown_t;
 
-
-int countdown_init(countdown_t *cd, int initial_value) {
-    if (initial_value <= 0) {
+int countdown_init(countdown_t *cd, int initialValue) {
+    if (initialValue <= 0) {
         fprintf(stderr, "Initial value can't be equal or lower than 0");
         exit(EXIT_FAILURE);
     }
     
-    cd->count = initial_value;
+    cd->count = initialValue;
     pthread_cond_init(&cd->cond, NULL);
     pthread_mutex_init(&cd->mutex, NULL);
 
@@ -33,9 +31,8 @@ int countdown_destroy(countdown_t *cd) {
 int countdown_wait(countdown_t *cd) {
     pthread_mutex_lock(&cd->mutex);
 
-    while (cd->count != 0) {
+    while (cd->count != 0)
         pthread_cond_wait(&cd->cond, &cd->mutex);
-    }
     
     pthread_mutex_unlock(&cd->mutex);
 
@@ -47,9 +44,9 @@ int countdown_down(countdown_t *cd) {
 
     if (cd->count > 0) {
         cd->count--;
-        if (cd->count == 0) {
+
+        if (cd->count == 0)
             pthread_cond_broadcast(&cd->cond);
-        }
     }
 
     pthread_mutex_unlock(&cd->mutex);
