@@ -1,6 +1,9 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
+
+#define NITER 1e9
 
 typedef void *(*wi_function_t)(void *);
 
@@ -22,31 +25,38 @@ typedef struct {
     int shutdown;
 } threadpool_t;
 
-static void *thread_do_work(void *threadpool);
-static void add_task_to_queue(threadpool_t *pool, task_t *task);
-static task_t *remove_task_from_queue(threadpool_t *pool);
+int threadpool_init(threadpool_t *tp, int queueDim, int nthreads);
+int threadpool_submit(threadpool_t *tp, wi_function_t func, void *args);
+int threadpool_destroy(threadpool_t *tp);
 
-int threadpool_init(threadpool_t *pool, int queueDim, int nthreads) {
-    if (pool == NULL || queueDim <= 0 || nthreads <= 0) return -1;
+void *thread_do_work(void *threadpool);
 
-    pool->queue_max_size = queueDim;
-    pool->thread_count = nthreads;
-    pool->queue_size = 0;
-    pool->shutdown = 0;
-    pool->queue_head = pool->queue_tail = NULL;
+int threadpool_init(threadpool_t *tp, int queueDim, int nthreads) {
+    if (tp == NULL || queueDim <= 0 || nthreads <= 0)
+        return -1;
 
-    pool->threads = (pthread_t *)malloc(sizeof(pthread_t) * nthreads);
-    if (pool->threads == NULL) return -1;
+    tp->queue_max_size = queueDim;
+    tp->thread_count = nthreads;
+    tp->queue_size = 0;
+    tp->shutdown = 0;
+    tp->queue_head = tp->queue_tail = NULL;
 
-    if (pthread_mutex_init(&(pool->lock), NULL) != 0 ||
-        pthread_cond_init(&(pool->notify), NULL) != 0) {
-        free(pool->threads);
+    tp->threads = (pthread_t *)malloc(sizeof(pthread_t) * nthreads);
+    if (tp->threads == NULL) {
+        fprintf(stderr, "Error allocating memory for threads\n");
+        return -1;
+    }
+
+    if (pthread_mutex_init(&(tp->lock), NULL) != 0 || pthread_cond_init(&(tp->notify), NULL) != 0) {
+        fprintf(stderr, "Error initializing mutex or condition variable\n");
+        free(tp->threads);
         return -1;
     }
 
     for (int i = 0; i < nthreads; i++) {
-        if (pthread_create(&(pool->threads[i]), NULL, thread_do_work, (void *)pool) != 0) {
-            threadpool_destroy(pool);
+        if (pthread_create(&(tp->threads[i]), NULL, thread_do_work, (void *)tp) != 0) {
+            fprintf(stderr, "Error creating thread %d\n", i);
+            threadpool_destroy(tp);
             return -1;
         }
     }
@@ -54,78 +64,97 @@ int threadpool_init(threadpool_t *pool, int queueDim, int nthreads) {
     return 0;
 }
 
-int threadpool_submit(threadpool_t *pool, wi_function_t func, void *arg) {
-    if (pool == NULL || func == NULL) return -1;
+int threadpool_submit(threadpool_t *tp, wi_function_t func, void *arg) {
+    if (tp == NULL || func == NULL || tp->shutdown)
+        return -1;
 
     task_t *task = (task_t *)malloc(sizeof(task_t));
-    if (task == NULL) return -1;
+    if (task == NULL) {
+        fprintf(stderr, "Error allocating memory for task\n");
+        return -1;
+    }
 
     task->function = func;
     task->arg = arg;
     task->next = NULL;
 
-    pthread_mutex_lock(&(pool->lock));
+    pthread_mutex_lock(&(tp->lock));
 
-    if (pool->queue_size >= pool->queue_max_size) {
+    if (tp->queue_size >= tp->queue_max_size) {
         free(task);
-        pthread_mutex_unlock(&(pool->lock));
+        pthread_mutex_unlock(&(tp->lock));
+        fprintf(stderr, "Error: queue is full\n");
         return -1;
     }
 
-    add_task_to_queue(pool, task);
-    pool->queue_size++;
+    if (tp->queue_tail == NULL) {
+        tp->queue_head = task;
+        tp->queue_tail = task;
+    }
+    else {
+        tp->queue_tail->next = task;
+        tp->queue_tail = task;
+    }
+    tp->queue_size++;
 
-    pthread_cond_signal(&(pool->notify));
-    pthread_mutex_unlock(&(pool->lock));
+    pthread_cond_signal(&(tp->notify));
+    pthread_mutex_unlock(&(tp->lock));
 
     return 0;
 }
 
-int threadpool_destroy(threadpool_t *pool) {
-    if (pool == NULL) return -1;
+int threadpool_destroy(threadpool_t *tp) {
+    if (tp == NULL)
+        return -1;
 
-    pthread_mutex_lock(&(pool->lock));
-    pool->shutdown = 1;
-    pthread_cond_broadcast(&(pool->notify));
-    pthread_mutex_unlock(&(pool->lock));
+    pthread_mutex_lock(&(tp->lock));
+    tp->shutdown = 1;
+    pthread_cond_broadcast(&(tp->notify));
+    pthread_mutex_unlock(&(tp->lock));
 
-    for (int i = 0; i < pool->thread_count; i++) {
-        pthread_join(pool->threads[i], NULL);
-    }
+    for (int i = 0; i < tp->thread_count; i++)
+        pthread_join(tp->threads[i], NULL);
 
-    free(pool->threads);
+    free(tp->threads);
 
-    while (pool->queue_head != NULL) {
-        task_t *task = pool->queue_head;
-        pool->queue_head = pool->queue_head->next;
+    while (tp->queue_head != NULL) {
+        task_t *task = tp->queue_head;
+        tp->queue_head = tp->queue_head->next;
         free(task);
     }
 
-    pthread_mutex_destroy(&(pool->lock));
-    pthread_cond_destroy(&(pool->notify));
+    pthread_mutex_destroy(&(tp->lock));
+    pthread_cond_destroy(&(tp->notify));
 
     return 0;
 }
 
-static void *thread_do_work(void *threadpool) {
-    threadpool_t *pool = (threadpool_t *)threadpool;
+void *thread_do_work(void *threadpool) {
+    threadpool_t *tp = (threadpool_t *)threadpool;
 
     while (1) {
-        pthread_mutex_lock(&(pool->lock));
+        pthread_mutex_lock(&(tp->lock));
 
-        while (pool->queue_size == 0 && !pool->shutdown) {
-            pthread_cond_wait(&(pool->notify), &(pool->lock));
+        while (tp->queue_size == 0 && !tp->shutdown) {
+            pthread_cond_wait(&(tp->notify), &(tp->lock));
         }
 
-        if (pool->shutdown) {
-            pthread_mutex_unlock(&(pool->lock));
+        if (tp->queue_size == 0 && tp->shutdown) {
+            pthread_mutex_unlock(&(tp->lock));
             pthread_exit(NULL);
         }
 
-        task_t *task = remove_task_from_queue(pool);
-        pool->queue_size--;
+        task_t *task = tp->queue_head;
+        if (tp->queue_head == tp->queue_tail) {
+            tp->queue_head = NULL;
+            tp->queue_tail = NULL;
+        }
+        else
+            tp->queue_head = task->next;
 
-        pthread_mutex_unlock(&(pool->lock));
+        tp->queue_size--;
+
+        pthread_mutex_unlock(&(tp->lock));
 
         (*(task->function))(task->arg);
         free(task);
@@ -135,45 +164,30 @@ static void *thread_do_work(void *threadpool) {
     return NULL;
 }
 
-static void add_task_to_queue(threadpool_t *pool, task_t *task) {
-    if (pool->queue_tail == NULL) {
-        pool->queue_head = task;
-        pool->queue_tail = task;
-    } else {
-        pool->queue_tail->next = task;
-        pool->queue_tail = task;
-    }
-}
-
-static task_t *remove_task_from_queue(threadpool_t *pool) {
-    task_t *task = pool->queue_head;
-    if (pool->queue_head == pool->queue_tail) {
-        pool->queue_head = NULL;
-        pool->queue_tail = NULL;
-    } else {
-        pool->queue_head = task->next;
-    }
-    return task;
-}
-
 void *test_function(void *arg) {
     int num = *((int *)arg);
-    printf("Thread %d is working\n", num);
-    sleep(1);
+    printf("[%d] Thread is working\n", num);
+
+    for (long i = 0; i < NITER; i++)
+        sqrt(rand());
+
+    printf("[%d] Thread done!\n", num);
+
     return NULL;
 }
 
 int main() {
-    threadpool_t pool;
-    threadpool_init(&pool, 10, 4);
+    int dim = 10;
 
-    int args[10];
-    for (int i = 0; i < 10; i++) {
-        args[i] = i;
+    threadpool_t pool;
+    threadpool_init(&pool, dim, 4);
+
+    int args[dim];
+    for (int i = 0; i < dim; i++) {
+        args[i] = i + 1;
         threadpool_submit(&pool, test_function, &args[i]);
     }
 
-    sleep(3);
     threadpool_destroy(&pool);
 
     return 0;
