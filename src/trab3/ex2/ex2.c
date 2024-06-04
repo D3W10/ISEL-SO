@@ -17,10 +17,10 @@ typedef struct ChargePoint_t {
 int reserveChargePoint(ChargePoint *point) {
     int pos = -1;
 
+    sem_wait(&point->sLugaresLivres);
     pthread_mutex_lock(&point->mutex);
-    for (int i = 0; i < MAX_CAPACITY; i++) {
-        sem_wait(&point->sLugaresLivres);
 
+    for (int i = 0; i < MAX_CAPACITY; i++) {
         if (point->lugares[i] == 1) {
             pos = i;
             point->lugares[i] = 0;
@@ -51,8 +51,8 @@ int reserveChargePointPriority(ChargePoint *point) {
     pthread_mutex_unlock(&point->mutex);
 
     sem_wait(&point->sFilaPrioritaria);
-    pthread_mutex_lock(&point->mutex);
     sem_wait(&point->sLugaresLivres);
+    pthread_mutex_lock(&point->mutex);
 
     for (int i = 0; i < MAX_CAPACITY; i++) {
         if (point->lugares[i] == 1) {
@@ -72,19 +72,63 @@ int reserveChargePointPriority(ChargePoint *point) {
     return pos;
 }
 
+void initChargePoint(ChargePoint *point) {
+    for (int i = 0; i < MAX_CAPACITY; i++) {
+        point->lugares[i] = 1;
+    }
+    sem_init(&point->sLugaresLivres, 0, MAX_CAPACITY);
+    sem_init(&point->sFilaPrioritaria, 0, 0);
+    pthread_mutex_init(&point->mutex, NULL);
+    point->priority = 0;
+}
+
+void *test_thread(void *arg) {
+    ChargePoint *point = (ChargePoint *)arg;
+    int pos = reserveChargePoint(point);
+    if (pos != -1) {
+        printf("Reserved spot: %d\n", pos);
+        sleep(1); // Simulate some work
+        freeChargePoint(point, pos);
+        printf("Freed spot: %d\n", pos);
+    } else {
+        printf("No spots available\n");
+    }
+    return NULL;
+}
+
+void *test_thread_priority(void *arg) {
+    ChargePoint *point = (ChargePoint *)arg;
+    int pos = reserveChargePointPriority(point);
+    if (pos != -1) {
+        printf("Priority reserved spot: %d\n", pos);
+        sleep(1); // Simulate some work
+        freeChargePoint(point, pos);
+        printf("Priority freed spot: %d\n", pos);
+    } else {
+        printf("No priority spots available\n");
+    }
+    return NULL;
+}
+
 int main() {
     ChargePoint chargePoint;
+    initChargePoint(&chargePoint);
 
-    sem_init(&chargePoint.sLugaresLivres, 0, MAX_CAPACITY);
-    sem_init(&chargePoint.sFilaPrioritaria, 0, 0);
-    pthread_mutex_init(&chargePoint.mutex, NULL);
+    pthread_t threads[20];
 
-    for (int i = 0; i < MAX_CAPACITY; i++)
-        chargePoint.lugares[i] = 1;
+    for (int i = 0; i < 10; i++) {
+        pthread_create(&threads[i], NULL, test_thread, (void *)&chargePoint);
+    }
 
-    sem_destroy(&chargePoint.sLugaresLivres);
-    sem_destroy(&chargePoint.sFilaPrioritaria);
-    pthread_mutex_destroy(&chargePoint.mutex);
+    // Create threads for priority reservation
+    for (int i = 10; i < 20; i++) {
+        pthread_create(&threads[i], NULL, test_thread_priority, (void *)&chargePoint);
+    }
+
+    // Join all threads
+    for (int i = 0; i < 20; i++) {
+        pthread_join(threads[i], NULL);
+    }
 
     return 0;
 }
