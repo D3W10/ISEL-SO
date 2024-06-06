@@ -1,0 +1,15 @@
+Servidor disponível através de um socket no domínio internet atendendo múltiplos
+clientes em concorrência.
+R: Falso
+
+Servidor disponível através de um socket no domínio internet atendendo múltiplos
+clientes em sequência.
+R: Verdadeiro
+
+Servidor disponível através de um socket no domínio internet atendendo múltiplos
+clientes em concorrência.
+R: Verdadeiro
+
+Servidor disponível através de um socket no domínio internet atendendo múltiplos
+clientes em sequência.
+R: Falso
