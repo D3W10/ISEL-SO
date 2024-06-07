@@ -15,6 +15,10 @@
 #define MAX_WORKERS                      10
 #define UNIX_SOCKET_PATH "/tmp/unix_socket"
 
+#define CONN_WIDTH                       12
+#define OP_WIDTH                         12
+#define VEC_WIDTH                        15
+
 typedef struct {
     int socketfd;
     threadpool_t *pool;
@@ -184,7 +188,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    pthread_t tcpThread, unixThread;
+    pthread_t tcpThread, unixThread, statsThread;
     threadpool_t pool, workers;
     threadpool_init(&pool, CLIENT_QUEUE, MAX_CLIENTS);
     threadpool_init(&workers, TASK_QUEUE, MAX_WORKERS);
@@ -217,7 +221,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }*/
 
-    if (pthread_create(&unixThread, NULL, printStatistics, NULL) != 0) {
+    if (pthread_create(&statsThread, NULL, printStatistics, NULL) != 0) {
         fprintf(stderr, "Error creating statistics thread\n");
         threadpool_destroy(&pool);
         threadpool_destroy(&workers);
@@ -230,6 +234,9 @@ int main(int argc, char *argv[]) {
 
     threadpool_destroy(&pool);
     threadpool_destroy(&workers);
+    pthread_cancel(tcpThread);
+    //pthread_cancel(unixThread);
+    pthread_cancel(statsThread);
     pthread_mutex_destroy(&statsMutex);
     close(tcpSocketfd);
     //close(unixSocketfd);
@@ -306,10 +313,11 @@ void sumVectorSize(int size) {
 }
 
 void* printStatistics(void* args) {
+    printf("%-*s %-*s %-*s\n", CONN_WIDTH, "Connections", OP_WIDTH, "Operations", VEC_WIDTH, "Vector Size");
+    printf("%-*s %-*s %-*s\n", CONN_WIDTH, "------------", OP_WIDTH, "------------", VEC_WIDTH, "---------------");
+
     while (1) {
-        printf("Total connections: %d\n", totalStats.totalConnections);
-        printf("Total operations: %d\n", totalStats.totalOperations);
-        printf("Vetor size average: %.2lf\n", totalStats.totalVectorSize / (double)totalStats.totalOperations);
+        printf("%-*d %-*d %-*.2f\n", CONN_WIDTH, totalStats.totalConnections, OP_WIDTH, totalStats.totalOperations, VEC_WIDTH, (float)totalStats.totalVectorSize / (totalStats.totalOperations == 0 ? 1 : totalStats.totalOperations));
         sleep(1);
     }
 
