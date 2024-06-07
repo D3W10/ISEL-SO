@@ -198,14 +198,12 @@ int main(int argc, char *argv[]) {
     int tcpSocketfd = tcp_socket_server_init(serverPort);
     handle_error_system(tcpSocketfd, "[srv] TCP server socket init");
 
-    /*int unixSocketfd = un_socket_server_init(UNIX_SOCKET_PATH);
-    handle_error_system(unixSocketfd, "[srv] UNIX server socket init");*/
+    int unixSocketfd = un_socket_server_init(UNIX_SOCKET_PATH);
+    handle_error_system(unixSocketfd, "[srv] UNIX server socket init");
 
     server_args tcpArgs = { tcpSocketfd, &pool, &workers };
-    //server_args unixArgs = { unixSocketfd, &pool, &workers };
+    server_args unixArgs = { unixSocketfd, &pool, &workers };
     pthread_mutex_init(&statsMutex, NULL);
-
-    // TODO: remove
 
     if (pthread_create(&tcpThread, NULL, tcp_accept, &tcpArgs) != 0) {
         fprintf(stderr, "Error creating tcp thread\n");
@@ -214,12 +212,12 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    /*if (pthread_create(&unixThread, NULL, unix_accept, &unixArgs) != 0) {
+    if (pthread_create(&unixThread, NULL, unix_accept, &unixArgs) != 0) {
         fprintf(stderr, "Error creating unix thread\n");
         threadpool_destroy(&pool);
         threadpool_destroy(&workers);
         exit(EXIT_FAILURE);
-    }*/
+    }
 
     if (pthread_create(&statsThread, NULL, printStatistics, NULL) != 0) {
         fprintf(stderr, "Error creating statistics thread\n");
@@ -235,11 +233,11 @@ int main(int argc, char *argv[]) {
     threadpool_destroy(&pool);
     threadpool_destroy(&workers);
     pthread_cancel(tcpThread);
-    //pthread_cancel(unixThread);
+    pthread_cancel(unixThread);
     pthread_cancel(statsThread);
     pthread_mutex_destroy(&statsMutex);
     close(tcpSocketfd);
-    //close(unixSocketfd);
+    close(unixSocketfd);
 
     return 0;
 }
