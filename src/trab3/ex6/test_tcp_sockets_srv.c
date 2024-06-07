@@ -38,12 +38,27 @@ typedef struct {
     countdown_t *cd;
 } thread_args;
 
+typedef struct {
+    int totalConnections;
+    int totalOperations;
+    int totalVectorSize;
+} stats;
+
 void process_client(int socketfd, threadpool_t *pool, threadpool_t *workers);
 int vector_get_in_range_with_thread_pool (int v[], int v_sz, int sv[], int min, int max, threadpool_t *tp);
 void* tcp_accept(void* args);
 void* unix_accept(void* args);
+void incrementConnection();
+void incrementOperation();
+void sumVectorSize(int size);
+void* printStatistics(void* args);
+
+stats totalStats;
+pthread_mutex_t statsMutex;
 
 void range_child(thread_args* args) {
+    incrementOperation();
+
     for (int j = args->index * args->size; j < (args->index + 1) * args->size; j++) {
         if (args->v[j] >= args->min && args->v[j] <= args->max)
             args->res[args->res_count++] = args->v[j];
@@ -55,6 +70,7 @@ void range_child(thread_args* args) {
 void* handle_client(void* args) {
     client_args *p_args = (client_args *)args;
 
+    incrementConnection();
     process_client(p_args->socketfd, p_args->pool, p_args->workers);
 
     handle_error_system(close(p_args->socketfd), "[srv] closing socket to client");
@@ -72,6 +88,8 @@ void process_client(int socketfd, threadpool_t *pool, threadpool_t *workers) {
     min = buf[1];
     max = buf[2];
     nFullBatch = cnt / MAX_BUF;
+
+    sumVectorSize(cnt);
 
     int *vec = malloc(sizeof(int) * cnt), vecSize;
     if (vec == NULL) {
@@ -176,30 +194,31 @@ int main(int argc, char *argv[]) {
     int tcpSocketfd = tcp_socket_server_init(serverPort);
     handle_error_system(tcpSocketfd, "[srv] TCP server socket init");
 
-    server_args serverArgs = {tcpSocketfd, &pool, &workers};
-
     /*int unixSocketfd = un_socket_server_init(UNIX_SOCKET_PATH);
-    handle_error_system(unixSocketfd, "[srv] UNIX server socket init");
+    handle_error_system(unixSocketfd, "[srv] UNIX server socket init");*/
 
-    pid_t child = fork();
-    if (child < 0) {
-        fprintf(stderr, "Error while forking");
-        exit(EXIT_FAILURE);
-    }
-    else if (child == 0) {
-        unix_accept(unixSocketfd, &pool, &workers);
-        exit(EXIT_SUCCESS);
-    }*/
+    server_args tcpArgs = { tcpSocketfd, &pool, &workers };
+    //server_args unixArgs = { unixSocketfd, &pool, &workers };
+    pthread_mutex_init(&statsMutex, NULL);
 
-    if (pthread_create(&tcpThread, NULL, tcp_accept, &serverArgs) != 0) {
+    // TODO: remove
+
+    if (pthread_create(&tcpThread, NULL, tcp_accept, &tcpArgs) != 0) {
         fprintf(stderr, "Error creating tcp thread\n");
         threadpool_destroy(&pool);
         threadpool_destroy(&workers);
         exit(EXIT_FAILURE);
     }
 
-    if (pthread_create(&unixThread, NULL, unix_accept, &serverArgs) != 0) {
+    /*if (pthread_create(&unixThread, NULL, unix_accept, &unixArgs) != 0) {
         fprintf(stderr, "Error creating unix thread\n");
+        threadpool_destroy(&pool);
+        threadpool_destroy(&workers);
+        exit(EXIT_FAILURE);
+    }*/
+
+    if (pthread_create(&unixThread, NULL, printStatistics, NULL) != 0) {
+        fprintf(stderr, "Error creating statistics thread\n");
         threadpool_destroy(&pool);
         threadpool_destroy(&workers);
         exit(EXIT_FAILURE);
@@ -211,6 +230,9 @@ int main(int argc, char *argv[]) {
 
     threadpool_destroy(&pool);
     threadpool_destroy(&workers);
+    pthread_mutex_destroy(&statsMutex);
+    close(tcpSocketfd);
+    //close(unixSocketfd);
 
     return 0;
 }
@@ -260,6 +282,35 @@ void* unix_accept(void* args) {
             threadpool_destroy(s_args->workers);
             exit(EXIT_FAILURE);
         }
+    }
+
+    pthread_exit(NULL);
+}
+
+void incrementConnection() {
+    pthread_mutex_lock(&statsMutex);
+    totalStats.totalConnections++;
+    pthread_mutex_unlock(&statsMutex);
+}
+
+void incrementOperation() {
+    pthread_mutex_lock(&statsMutex);
+    totalStats.totalOperations++;
+    pthread_mutex_unlock(&statsMutex);
+}
+
+void sumVectorSize(int size) {
+    pthread_mutex_lock(&statsMutex);
+    totalStats.totalVectorSize += size;
+    pthread_mutex_unlock(&statsMutex);
+}
+
+void* printStatistics(void* args) {
+    while (1) {
+        printf("Total connections: %d\n", totalStats.totalConnections);
+        printf("Total operations: %d\n", totalStats.totalOperations);
+        printf("Vetor size average: %.2lf\n", totalStats.totalVectorSize / (double)totalStats.totalOperations);
+        sleep(1);
     }
 
     pthread_exit(NULL);
