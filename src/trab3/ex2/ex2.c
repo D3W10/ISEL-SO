@@ -87,12 +87,12 @@ void *test_thread(void *arg) {
     int pos = reserveChargePoint(point);
     if (pos != -1) {
         printf("Reserved spot: %d\n", pos);
-        sleep(1); // Simulate some work
+        sleep(1);
         freeChargePoint(point, pos);
         printf("Freed spot: %d\n", pos);
-    } else {
+    } else
         printf("No spots available\n");
-    }
+
     return NULL;
 }
 
@@ -101,12 +101,12 @@ void *test_thread_priority(void *arg) {
     int pos = reserveChargePointPriority(point);
     if (pos != -1) {
         printf("Priority reserved spot: %d\n", pos);
-        sleep(1); // Simulate some work
+        sleep(1);
         freeChargePoint(point, pos);
         printf("Priority freed spot: %d\n", pos);
-    } else {
+    } else
         printf("No priority spots available\n");
-    }
+
     return NULL;
 }
 
@@ -116,16 +116,17 @@ int main() {
 
     pthread_t threads[20];
 
+    // Cria threads sem prioridade de reserva
     for (int i = 0; i < 10; i++) {
         pthread_create(&threads[i], NULL, test_thread, (void *)&chargePoint);
     }
 
-    // Create threads for priority reservation
+    // Cria threads com prioridade de reserva
     for (int i = 10; i < 20; i++) {
         pthread_create(&threads[i], NULL, test_thread_priority, (void *)&chargePoint);
     }
 
-    // Join all threads
+    // Junta todas as threads
     for (int i = 0; i < 20; i++) {
         pthread_join(threads[i], NULL);
     }
