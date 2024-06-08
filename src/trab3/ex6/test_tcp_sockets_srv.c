@@ -120,7 +120,7 @@ void process_client(int socketfd, threadpool_t *pool, threadpool_t *workers) {
         batchCount++;
     }
 
-    vecSize = vector_get_in_range_with_thread_pool(allVals, cnt, vec, min, max, pool);
+    vecSize = vector_get_in_range_with_thread_pool(allVals, cnt, vec, min, max, workers);
     if (vecSize == -1) {
         threadpool_destroy(workers);
         exit(EXIT_FAILURE);
@@ -232,9 +232,14 @@ int main(int argc, char *argv[]) {
 
     threadpool_destroy(&pool);
     threadpool_destroy(&workers);
+
     pthread_cancel(tcpThread);
+    pthread_join(tcpThread, NULL);
     pthread_cancel(unixThread);
+    pthread_join(unixThread, NULL);
     pthread_cancel(statsThread);
+    pthread_join(statsThread, NULL);
+
     pthread_mutex_destroy(&statsMutex);
     close(tcpSocketfd);
     close(unixSocketfd);
@@ -248,7 +253,7 @@ void* tcp_accept(void* args) {
     while (1) {
         int newsocketfd = tcp_socket_server_accept(s_args->socketfd);
 
-        handle_error_system(newsocketfd, "[srv] Accept new connection");
+        handle_error_system(newsocketfd, "[srv] Accept new tcp connection");
 
         client_args *p_args = malloc(sizeof(client_args));
         p_args->socketfd = newsocketfd;
@@ -273,7 +278,7 @@ void* unix_accept(void* args) {
     while (1) {
         int newsocketfd = un_socket_server_accept(s_args->socketfd);
 
-        handle_error_system(newsocketfd, "[srv] Accept new connection");
+        handle_error_system(newsocketfd, "[srv] Accept new unix connection");
 
         client_args *p_args = malloc(sizeof(client_args));
         p_args->socketfd = newsocketfd;
