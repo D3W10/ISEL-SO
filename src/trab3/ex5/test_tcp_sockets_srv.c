@@ -121,7 +121,11 @@ int vector_get_in_range_with_thread_pool (int v[], int v_sz, int sv[], int min, 
             return -1;
         }
 
-        threadpool_submit(tp, (void *(*)(void *))range_child, &targs[i]);
+        if (threadpool_submit(tp, (void *(*)(void *))range_child, &targs[i]) != 0) {
+            threadpool_destroy(tp);
+            fprintf(stderr, "Erro threadpool_submit\n");
+            return -1;
+        }
     }
 
     countdown_wait(&cd);
