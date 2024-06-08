@@ -1,0 +1,14 @@
+Para ter a execução de dois troços de código concorrentes com espaços de endereçamento
+separados num mesmo processo.
+R: Não
+
+Para poder realizar operações I/O em simultâneo com outras operações num mesmo processo.
+R: Sim
+
+Para poder executar dois programas (ficheiros executáveis) diferentes em concorrência e de uma
+forma mais rápida.
+R: Não
+
+Para dividir o processamento por ações concorrentes de forma a maximizar a utilização de toda
+a capacidade de processamento do hardware
+R: Sim
